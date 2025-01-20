@@ -1,6 +1,8 @@
 package hub.forum.api.controller;
 
-import hub.forum.api.topico.*;
+import hub.forum.api.domain.topico.*;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -14,10 +16,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("topicos")
+@SecurityRequirement(name = "bearer-key")
 public class TopicoController {
 
     @Autowired
@@ -40,7 +43,7 @@ public class TopicoController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<DadosListagemTopico>> listar( @PageableDefault(size = 10, sort = {"dataCriacao"}, direction = Sort.Direction.ASC) Pageable paginacao) {
+    public ResponseEntity<Page<DadosListagemTopico>> listar(@PageableDefault(size = 10, sort = {"dataCriacao"}, direction = Sort.Direction.ASC) Pageable paginacao) {
         var page = repository.findAllByAtivoTrue(paginacao).map(DadosListagemTopico::new);
         return ResponseEntity.ok(page);
     }
@@ -80,12 +83,24 @@ public class TopicoController {
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity excluir(@PathVariable Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tópico não encontrado.");
+
+        try {
+            var topico = repository.getReferenceById(id);
+
+            if (!topico.getAtivo()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("mensagem", "Tópico com ID " + id + " já está excluído."));
+            }
+
+            topico.excluir();
+            return ResponseEntity.noContent().build();
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("mensagem", "Tópico com ID " + id + " não foi encontrado."));
         }
-        repository.deleteById(id);
-        return ResponseEntity.noContent().build();
     }
+
 
 
 

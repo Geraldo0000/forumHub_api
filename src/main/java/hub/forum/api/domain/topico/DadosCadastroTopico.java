@@ -1,6 +1,5 @@
-package hub.forum.api.topico;
+package hub.forum.api.domain.topico;
 
-import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.NotBlank;
 
 import java.time.LocalDateTime;
